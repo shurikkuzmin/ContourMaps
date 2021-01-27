@@ -1,0 +1,67 @@
+{% if imageName is none %}
+    <div id="fileUploader">
+        <form method="post" enctype="multipart/form-data">
+            <input id="inputId" name="mapPicture" type="file">
+            <br/>
+            <button>Submit</button>  
+        </form>
+    </div>
+{% else %}
+   <canvas id="mapImage" onclick="rgb(event)"></canvas>
+{% endif %}
+
+<div id="map" style="height: 100%"></div>
+
+<script src="https://code.jquery.com/jquery-3.3.1.min.js"></script>
+
+<script>
+    var myImage = new Image();
+    myImage.src = "{{ imageName }}";
+
+    var canvas = document.getElementById("mapImage");
+    var context = canvas.getContext("2d");
+
+    myImage.onload = function() {
+        canvas.width = myImage.width;
+        canvas.height = myImage.height;
+  
+        context.drawImage(myImage,0,0);
+    };
+
+    function initMap() {
+        
+        // Create a map object and specify the DOM element for display.
+        var map = new google.maps.Map(document.getElementById("map"), 
+        {
+            center: { lat: -34.397, lng: 150.644 },
+            zoom: 8,
+        });
+    
+    };
+  
+    function rgb(event)
+    {
+        console.log(event.clientX, event.clientY);
+        var imageData = context.getImageData(event.clientX, event.clientY, 1, 1).data;
+        console.log(imageData[0], imageData[1],imageData[2]);
+
+        $.ajax(
+        {
+            url : "{{ url_for('process') }}", 
+            type : "POST",
+            data: {    
+                    red: imageData[0], 
+                    green: imageData[1], 
+                    blue: imageData[2],
+                    fileName: "{{ imageName }}"
+            }, 
+            // handle a successful response
+            function() {
+              //$("#min_delay").html(raw.val_min.toString().substr(0,5));
+              //$("#max_delay").html(raw.val_max.toString().substr(0,5));
+            },
+        });
+    };
+</script>
+<script async defer src="https://maps.googleapis.com/maps/api/js?key=AIzaSyBQxn1ZTFWJlmIb0oWeHwfL8_Sbr7YJvOY&callback=initMap"></script>
+
