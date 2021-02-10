@@ -1,3 +1,15 @@
+
+<head>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css">    
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css"
+        integrity="sha512-xodZBNTC5n17Xt2atTPuE1HxjVMSvLVW9ocqUKLsCC5CXdbqCmblAshOMAS6/keqq/sMZMZ19scR4PsZChSR7A=="
+        crossorigin=""/>
+    <script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js" 
+        integrity="sha512-XQoYMqMTK8LvdxXYG3nZ448hOEQiglfqkJs1NOQV44cWnUrBc8PkAOcXy20w0vlaXaVUearIOBhiXZ5V3ynxwA=="
+        crossorigin="">
+    </script>
+</head>
+<body> 
 {% if imageName is none %}
     <div id="fileUploader">
         <form method="post" enctype="multipart/form-data">
@@ -10,58 +22,125 @@
    <canvas id="mapImage" onclick="rgb(event)"></canvas>
 {% endif %}
 
-<div id="map" style="height: 100%"></div>
+<div>
+    <div id="map" style="height:80%; width: 80%; float:left;"></div>
+    <div><i id="down" class="fa fa-arrow-circle-down" style="font-size:48px;"></i></div>
+    <div><i id="up" class="fa fa-arrow-circle-up" style="font-size:48px;"></i></div>
+    <div><i id="right"class="fa fa-arrow-circle-right" style="font-size:48px;"></i></div>
+    <div><i id="left" class="fa fa-arrow-circle-left" style="font-size:48px;"></i></div>    
+</div>
+
+</body>
 
 <script src="https://code.jquery.com/jquery-3.3.1.min.js"></script>
 
 <script>
-    var myImage = new Image();
-    myImage.src = "{{ imageName }}";
+    var m_image = new Image();
+    m_image.src = "{{ imageName }}";
 
-    var canvas = document.getElementById("mapImage");
-    var context = canvas.getContext("2d");
+    var m_canvas = document.getElementById("mapImage");
+    var m_context = m_canvas.getContext("2d");
 
-    myImage.onload = function() {
-        canvas.width = myImage.width;
-        canvas.height = myImage.height;
+    m_image.onload = function() 
+    {
+        m_canvas.width = m_image.width;
+        m_canvas.height = m_image.height;
   
-        context.drawImage(myImage,0,0);
+        m_context.drawImage(m_image,0,0);
     };
 
-    function initMap() {
+    // Global variable map and contour
+    //var m_map;
+    var m_contour;
+
+    //function initMap() 
+    //{
         
         // Create a map object and specify the DOM element for display.
-        var map = new google.maps.Map(document.getElementById("map"), 
-        {
-            center: { lat: -34.397, lng: 150.644 },
-            zoom: 8,
-        });
-    
-    };
-  
+    //    m_map = new google.maps.Map(document.getElementById("map"), 
+    //    {
+     //       center: { lat: 55.0, lng: 35.0 },
+     //       zoom: 8,
+     //   });
+        var m_map = L.map("map");
+        L.tileLayer('https://api.mapbox.com/styles/v1/{id}/tiles/{z}/{x}/{y}?access_token={accessToken}', {
+            attribution: 'Map data &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors, Imagery © <a href="https://www.mapbox.com/">Mapbox</a>',
+            maxZoom: 18,
+            id: 'mapbox/streets-v11',
+            tileSize: 512,
+            zoomOffset: -1,
+            accessToken: 'pk.eyJ1Ijoic2h1cmlra3V6bWluIiwiYSI6ImNra3l2bzdxbzBjbmcyd254NnhoZDF3cmgifQ._0te87zWem2eNpjvzQuvTA'
+        }).addTo(m_map);
+        m_map.setView([55.0, 35.0], 8);
+    //};
+
     function rgb(event)
     {
         console.log(event.clientX, event.clientY);
-        var imageData = context.getImageData(event.clientX, event.clientY, 1, 1).data;
+        var imageData = m_context.getImageData(event.clientX, event.clientY, 1, 1).data;
         console.log(imageData[0], imageData[1],imageData[2]);
 
         $.ajax(
         {
             url : "{{ url_for('process') }}", 
             type : "POST",
-            data: {    
+            data: 
+            {    
                     red: imageData[0], 
                     green: imageData[1], 
                     blue: imageData[2],
                     fileName: "{{ imageName }}"
             }, 
             // handle a successful response
-            function() {
-              //$("#min_delay").html(raw.val_min.toString().substr(0,5));
-              //$("#max_delay").html(raw.val_max.toString().substr(0,5));
+            success: function(contour) 
+            {
+                //m_contour = m_map.data.addGeoJson(contour);
+                m_contour = L.geoJSON(contour).addTo(m_map);
+                console.log(m_contour)
             },
         });
     };
-</script>
-<script async defer src="https://maps.googleapis.com/maps/api/js?key=AIzaSyBQxn1ZTFWJlmIb0oWeHwfL8_Sbr7YJvOY&callback=initMap"></script>
 
+    $( "#down" ).click(function() 
+    {
+        contour2 = m_contour.toGeoJSON();
+        contour2.features[0].geometry.coordinates[0].forEach(function(feature) 
+        { 
+           feature[1]=feature[1]-0.5;
+        });
+        m_contour.getLayers()[0].remove();
+        m_contour = L.geoJSON(contour2).addTo(m_map);
+    });
+
+    $( "#up" ).click(function() 
+    {
+        contour2 = m_contour.toGeoJSON();
+        contour2.features[0].geometry.coordinates[0].forEach(function(feature) 
+        { 
+           feature[1]=feature[1]+0.5;
+        });
+        m_contour.getLayers()[0].remove();
+        m_contour = L.geoJSON(contour2).addTo(m_map);
+    });
+    $( "#left" ).click(function() 
+    {
+        contour2 = m_contour.toGeoJSON();
+        contour2.features[0].geometry.coordinates[0].forEach(function(feature) 
+        { 
+           feature[0]=feature[0]-0.5;
+        });
+        m_contour.getLayers()[0].remove();
+        m_contour = L.geoJSON(contour2).addTo(m_map);
+    });
+    $( "#right" ).click(function() 
+    {
+        contour2 = m_contour.toGeoJSON();
+        contour2.features[0].geometry.coordinates[0].forEach(function(feature) 
+        { 
+           feature[0]=feature[0]+0.5;
+        });
+        m_contour.getLayers()[0].remove();
+        m_contour = L.geoJSON(contour2).addTo(m_map);
+    });
+
+</script>

@@ -36,8 +36,20 @@ def processImage(imageName, color):
     mainContour = contours[-1]
     mainContour = mainContour.reshape((mainContour.shape[0], mainContour.shape[2]))
     mainContour = mainContour - np.array(np.average(mainContour, axis=0), dtype=np.int)
+    xMin, yMin = np.min(mainContour, axis=0)
+    xMax, yMax = np.max(mainContour, axis=0)
+    mainContourReal = np.asarray(mainContour, dtype=np.float)
+    if xMax - xMin != 0 and yMax - yMin != 0:
+        ratio = (yMax - yMin) / (xMax - xMin)
+        print(ratio)
+        mainContourReal[:,0] = 35 + 5 * mainContour[:,0] / (xMax - xMin)
+        mainContourReal[:,1] = 55 - 5 * mainContour[:,1] / (yMax - yMin) * ratio
+    
+    mainContourReal = np.vstack((mainContourReal, mainContourReal[0,:]))
 
-    print(mainContour)
+    dictContour = {"type": "FeatureCollection", "features": []}
+    dictContour["features"].append({"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [mainContourReal.tolist()]}})
+    return dictContour
     
     
 UPLOAD_FOLDER = "files"
@@ -72,10 +84,9 @@ def send_file(fileName):
 def process():
     color = np.array([flask.request.form["blue"], flask.request.form["green"], flask.request.form["red"]], dtype=np.uint8)
     imageName = Path(flask.request.form["fileName"]) 
-    processImage(imageName, color)
- 
-    return ""
+    contour = processImage(imageName, color)
+
+    return flask.jsonify(contour)
 
 if __name__ == '__main__':
-    #processImage();
     app.run(debug=True)
