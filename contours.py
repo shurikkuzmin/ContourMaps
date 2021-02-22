@@ -41,12 +41,11 @@ def processImage(imageName, color):
     mainContourReal = np.asarray(mainContour, dtype=np.float)
     if xMax - xMin != 0 and yMax - yMin != 0:
         ratio = (yMax - yMin) / (xMax - xMin)
-        print(ratio)
-        mainContourReal[:,0] = 35 + 5 * mainContour[:,0] / (xMax - xMin)
-        mainContourReal[:,1] = 55 - 5 * mainContour[:,1] / (yMax - yMin) * ratio
-    
-    mainContourReal = np.vstack((mainContourReal, mainContourReal[0,:]))
-
+        mainContourReal[:,0] = 35.0 + 5.0 * mainContour[:,0] / (xMax - xMin)
+        
+        # Let's see if Merkator transformation helps
+        mainContourReal[:,1] = 180.0 / np.pi * (2.0 * np.arctan(np.exp((55.0 - 5.0 * mainContour[:,1] / (yMax - yMin) * ratio) * np.pi/180.0)) - 0.5 * np.pi)
+        print(mainContourReal)
     dictContour = {"type": "FeatureCollection", "features": []}
     dictContour["features"].append({"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [mainContourReal.tolist()]}})
     return dictContour
