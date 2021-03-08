@@ -56,14 +56,16 @@
     var m_contour;
 
     var m_map = L.map("map");
-    L.tileLayer('https://api.mapbox.com/styles/v1/{id}/tiles/{z}/{x}/{y}?access_token={accessToken}', {
+    /*L.tileLayer('https://api.mapbox.com/styles/v1/{id}/tiles/{z}/{x}/{y}?access_token={accessToken}', {
         attribution: 'Map data &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors, Imagery © <a href="https://www.mapbox.com/">Mapbox</a>',
         maxZoom: 18,
         id: 'mapbox/streets-v11',
         tileSize: 512,
         zoomOffset: -1,
         accessToken: 'pk.eyJ1Ijoic2h1cmlra3V6bWluIiwiYSI6ImNra3l2bzdxbzBjbmcyd254NnhoZDF3cmgifQ._0te87zWem2eNpjvzQuvTA'
-    }).addTo(m_map);
+    }).addTo(m_map);*/
+
+    L.tileLayer('http://{s}.tile.osm.org/{z}/{x}/{y}.png', {attribution: '&copy; ' +'<a href="http://osm.org/copyright">OpenStreetMap</a> contributors'}).addTo(m_map);
     m_map.setView([55.0, 35.0], 8);
     L.control.scale().addTo(m_map);
 
@@ -85,8 +87,36 @@
             // handle a successful response
             success: function(contour) 
             {
-                //m_contour = m_map.data.addGeoJson(contour);
-                m_contour = L.geoJSON(contour).addTo(m_map);
+                // We need to make this stuff draggable without
+                // any errors processing
+                m_contour = L.geoJSON(contour.geoJSON).addTo(m_map);
+                m_marker = L.marker(contour.center).addTo(m_map);
+                m_marker.dragging.enable();
+                
+                m_marker.on("drag", function(event)
+                {
+                    contour2 = m_contour.toGeoJSON();
+                    coors2 = contour2.features[0].geometry.coordinates[0];
+                    lat = 0.0
+                    lon = 0.0
+                    for (i = 0; i < coors2.length - 1; i++) 
+                    {
+                        lat = lat + coors2[i][0];
+                        lon = lon + coors2[i][1];
+                    }
+                    lat = lat / (coors2.length - 1)
+                    lon = lon / (coors2.length - 1)
+                    
+                    for (i = 0; i < coors2.length - 1; i++) 
+                    {
+                        coors2[i][0] = coors2[i][0] + this.getLatLng().lng - lat;
+                        coors2[i][1] = coors2[i][1] + this.getLatLng().lat - lon;
+                    }
+
+                    m_contour.getLayers()[0].remove();
+                    m_contour = L.geoJSON(contour2).addTo(m_map);
+                    //console.log(this.getLatLng());
+                });
             },
         });
     };

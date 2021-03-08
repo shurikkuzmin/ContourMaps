@@ -6,6 +6,11 @@ from pathlib import Path
 
 import time
 
+def transformToEuclidianCoordinates(y):
+    return 180.0 / np.pi * np.log(np.tan(0.25 * np.pi + 0.5 * y * np.pi / 180.0)) 
+def transformToGeoCoordinates(y):
+    return 180.0 / np.pi * (2.0 * np.arctan(np.exp(y * np.pi / 180.0)) - 0.5 * np.pi)
+
 def processImage(imageName, color):
    
     image = cv2.imread(str(imageName)) 
@@ -41,13 +46,17 @@ def processImage(imageName, color):
     mainContourReal = np.asarray(mainContour, dtype=np.float)
     if xMax - xMin != 0 and yMax - yMin != 0:
         ratio = (yMax - yMin) / (xMax - xMin)
-        mainContourReal[:,0] = 35.0 + 5.0 * mainContour[:,0] / (xMax - xMin)
+        mainContourReal[:,0] = 37.0 - 2.5 + 5.0 * mainContour[:,0] / (xMax - xMin) 
         
-        # Let's see if Merkator transformation helps
-        mainContourReal[:,1] = 180.0 / np.pi * (2.0 * np.arctan(np.exp((55.0 - 5.0 * mainContour[:,1] / (yMax - yMin) * ratio) * np.pi/180.0)) - 0.5 * np.pi)
-        print(mainContourReal)
-    dictContour = {"type": "FeatureCollection", "features": []}
-    dictContour["features"].append({"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [mainContourReal.tolist()]}})
+        # Apply Merkator transformation. Not the best thing, but OK
+        mainContourReal[:,1] =  - transformToGeoCoordinates(55.0 - (-2.5 * ratio + 5.0 * mainContour[:,1] / (yMax - yMin) * ratio))
+
+        # Modify the average point
+        mainContourReal[:,1] = 55.0 - mainContourReal[:,1] + np.average(mainContourReal[:,1]) 
+
+    dictContour = {"geoJSON": {"type": "FeatureCollection", "features": []}, "center": [np.average(mainContourReal[:,1]),np.average(mainContourReal[:,0])]}
+    dictContour["geoJSON"]["features"].append({"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [mainContourReal.tolist()]}})
+    print(dictContour)
     return dictContour
     
     
